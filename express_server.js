@@ -1,22 +1,21 @@
 const express = require("express");
 const app = express();
 const PORT = 8080;
-const bodyParser = require("body-parser");
 
 // Middleware to parse POST request body data
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
 
 // Set EJS as the view engine
 app.set("view engine", "ejs");
 
-// URL Database
+// URL Database (temporary in-memory storage)
 const urlDatabase = {
   b2xVn2: "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com",
 };
 
-// Function to generate a random short URL (for simplicity)
-function generateShortURL() {
+// Function to generate a random short URL ID (6 characters long)
+function generateRandomString() {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let shortURL = "";
   for (let i = 0; i < 6; i++) {
@@ -46,15 +45,16 @@ app.get("/urls/:id", (req, res) => {
 });
 
 // Route to render the new URL form
-app.get("/u/new", (req, res) => {
-  res.render("new_url"); // This will render the 'new_url.ejs' template
+app.get("/urls/new", (req, res) => {
+  res.render("urls_new"); // This will render the 'urls_new.ejs' template
 });
 
-// POST route to handle new URL creation
+// POST route to handle the URL creation
 app.post("/urls", (req, res) => {
   const longURL = req.body.longURL; // Get the long URL from the form
-  const shortURL = generateShortURL(); // Generate a short URL
+  const shortURL = generateRandomString(); // Generate a short URL
   urlDatabase[shortURL] = longURL; // Add the new URL to the database
+  console.log(req.body); // Log the POST request body to the console (for debugging)
   res.redirect(`/urls/${shortURL}`); // Redirect to the newly created URL's page
 });
 
