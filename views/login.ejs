@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, shrink-to-fit=no"
     />
-    <title>Register - TinyApp</title>
+    <title>Login - TinyApp</title>
     <!-- Add Bootstrap CSS here if needed -->
   </head>
 
@@ -14,8 +14,8 @@
     <%- include('partials/_header') %>
 
     <main style="margin: 1em;">
-      <h3>Register</h3>
-      <form action="/register" method="POST">
+      <h3>Login</h3>
+      <form action="/login" method="POST">
         <div>
           <label for="email">Email:</label>
           <input type="email" name="email" required />
@@ -24,7 +24,7 @@
           <label for="password">Password:</label>
           <input type="password" name="password" required />
         </div>
-        <button type="submit">Register</button>
+        <button type="submit">Login</button>
       </form>
     </main>
 
