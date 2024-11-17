@@ -4,7 +4,7 @@ const app = express();
 const PORT = 8080;
 
 // Middleware setup
-app.use(cookieParser());  // Use cookie-parser middleware to handle cookies
+app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 
@@ -17,10 +17,15 @@ const urlDatabase = {
 // Route to show all URLs
 app.get("/urls", (req, res) => {
   const templateVars = {
-    username: req.cookies["username"],  // Retrieve the username from the cookie
-    urls: urlDatabase,  // Pass the URLs to the template
+    username: req.cookies["username"], // Pass the username to the template
+    urls: urlDatabase,
   };
-  res.render("urls_index", templateVars);  // Render the view and pass templateVars
+  res.render("urls_index", templateVars); // Render the urls_index view
+});
+
+// GET route for /register (renders the registration form)
+app.get("/register", (req, res) => {
+  res.render("register");  // Render the register.ejs template
 });
 
 // Route for handling login (set cookie with username)
@@ -36,14 +41,6 @@ app.post("/urls", (req, res) => {
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = longURL;
   res.redirect(`/urls/${shortURL}`);
-});
-
-// Route to display a specific URL
-app.get("/urls/:id", (req, res) => {
-  const id = req.params.id;
-  const longURL = urlDatabase[id];
-  const templateVars = { id: id, longURL: longURL };
-  res.render("urls_show", templateVars);
 });
 
 // Generate random short URL
