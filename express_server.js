@@ -1,5 +1,5 @@
 const express = require("express");
-const cookieParser = require("cookie-parser");  // Import cookie-parser
+const cookieParser = require("cookie-parser");
 const app = express();
 const PORT = 8080;
 
