@@ -26,6 +26,16 @@ function generateRandomString() {
   return shortURL;
 }
 
+// Helper function to find a user by email
+function getUserByEmail(email) {
+  for (const userId in users) {
+    if (users[userId].email === email) {
+      return users[userId];
+    }
+  }
+  return null; // Return null if no user with the email is found
+}
+
 // GET /urls route to display URLs page
 app.get("/urls", (req, res) => {
   const userId = req.cookies["user_id"];
@@ -48,9 +58,14 @@ app.get("/register", (req, res) => {
 app.post("/register", (req, res) => {
   const { email, password } = req.body;
 
-  // Validate email and password are provided
+  // Validate email and password
   if (!email || !password) {
     return res.status(400).send("Email and password are required.");
+  }
+
+  // Check if the email is already in use
+  if (getUserByEmail(email)) {
+    return res.status(400).send("Email already exists.");
   }
 
   // Generate random user ID
