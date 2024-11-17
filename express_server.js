@@ -46,7 +46,7 @@ app.get("/urls/:id", (req, res) => {
 
 // Route to render the new URL form
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new"); // This will render the 'urls_new.ejs' template
+  res.render("urls_new");
 });
 
 // POST route to handle the URL creation
@@ -55,6 +55,13 @@ app.post("/urls", (req, res) => {
   const shortURL = generateRandomString(); // Generate a short URL
   urlDatabase[shortURL] = longURL; // Add the new URL to the database
   res.redirect(`/urls/${shortURL}`); // Redirect to the newly created URL's page
+});
+
+// POST route to handle URL deletion
+app.post("/urls/:id/delete", (req, res) => {
+  const id = req.params.id;
+  delete urlDatabase[id]; // Remove the short URL from the database
+  res.redirect("/urls"); // Redirect back to the URL list
 });
 
 // Route for redirecting short URLs to their long versions
