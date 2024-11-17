@@ -24,18 +24,6 @@ function generateRandomString() {
   return shortURL;
 }
 
-// Root route that renders the home page
-app.get("/", (req, res) => {
-  const templateVars = { title: "Welcome to TinyApp" };
-  res.render("index", templateVars);
-});
-
-// Route to display all URLs in a table
-app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
-  res.render("urls_index", templateVars);
-});
-
 // Route to display a single URL based on the ID in the URL
 app.get("/urls/:id", (req, res) => {
   const id = req.params.id;
@@ -44,33 +32,35 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
-// Route to render the new URL form
-app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+// POST route to handle the URL update
+app.post("/urls/:id", (req, res) => {
+  const id = req.params.id;
+  const updatedLongURL = req.body.longURL; // Get the updated long URL from the form
+  urlDatabase[id] = updatedLongURL; // Update the long URL in the database
+  res.redirect("/urls"); // Redirect back to the URL list
 });
 
-// POST route to handle the URL creation
+// POST route to handle URL creation
 app.post("/urls", (req, res) => {
-  const longURL = req.body.longURL; // Get the long URL from the form
-  const shortURL = generateRandomString(); // Generate a short URL
-  urlDatabase[shortURL] = longURL; // Add the new URL to the database
-  res.redirect(`/urls/${shortURL}`); // Redirect to the newly created URL's page
+  const longURL = req.body.longURL;
+  const shortURL = generateRandomString();
+  urlDatabase[shortURL] = longURL;
+  res.redirect(`/urls/${shortURL}`);
 });
 
 // POST route to handle URL deletion
 app.post("/urls/:id/delete", (req, res) => {
   const id = req.params.id;
-  delete urlDatabase[id]; // Remove the short URL from the database
-  res.redirect("/urls"); // Redirect back to the URL list
+  delete urlDatabase[id];
+  res.redirect("/urls");
 });
 
 // Route for redirecting short URLs to their long versions
 app.get("/u/:id", (req, res) => {
   const shortURL = req.params.id;
   const longURL = urlDatabase[shortURL];
-
   if (longURL) {
-    res.redirect(longURL); // Redirect to the long URL
+    res.redirect(longURL);
   } else {
     res.status(404).send("Short URL not found.");
   }
