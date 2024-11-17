@@ -2,47 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
     <title>TinyApp</title>
   </head>
   <body>
-    <%- include('partials/_header') %>
-    <main style="margin: 1em;">
-      <h3>My URLs</h3>
-      <table class="table">
-        <thead>
+    <%- include('partials/_header', { user: user }) %>
+    
+    <h1>My URLs</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Short URL ID</th>
+          <th>Long URL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (let shortURL in urls) { %>
           <tr>
-            <th scope="col">Short URL ID</th>
-            <th scope="col">Long URL</th>
-            <th scope="col">Edit</th>
-            <th scope="col">Delete</th>
+            <td><%= shortURL %></td>
+            <td><%= urls[shortURL] %></td>
           </tr>
-        </thead>
-        <tbody>
-          <% for (let id in urls) { %>
-            <tr>
-              <td><%= id %></td>
-              <td><%= urls[id] %></td>
-              <td>
-                <!-- Edit link that takes us to the url show page -->
-                <a href="/urls/<%= id %>">Edit</a>
-              </td>
-              <td>
-                <!-- Delete button form -->
-                <form method="POST" action="/urls/<%= id %>/delete">
-                  <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
-              </td>
-            </tr>
-          <% } %>
-        </tbody>
-      </table>
-      <a href="/urls/new">Create a New URL</a>
-    </main>
-
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+        <% } %>
+      </tbody>
+    </table>
   </body>
 </html>
