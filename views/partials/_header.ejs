@@ -19,4 +19,16 @@
       </div>
     </div>
   </nav>
+
+  <!-- Login Form -->
+  <div class="login-form">
+    <% if (username) { %>
+      <p>Logged in as <%= username %></p>
+    <% } else { %>
+      <form method="POST" action="/login" class="form-inline">
+        <input type="text" name="username" class="form-control" placeholder="Enter your username" required />
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+    <% } %>
+  </div>
 </header>
