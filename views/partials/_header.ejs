@@ -20,10 +20,13 @@
     </div>
   </nav>
 
-  <!-- Login Form -->
+  <!-- Login Form and Logged In User Display -->
   <div class="login-form">
     <% if (username) { %>
       <p>Logged in as <%= username %></p>
+      <form method="POST" action="/logout" class="logout-form">
+        <button type="submit" class="btn btn-danger">Logout</button>
+      </form>
     <% } else { %>
       <form method="POST" action="/login" class="form-inline">
         <input type="text" name="username" class="form-control" placeholder="Enter your username" required />
