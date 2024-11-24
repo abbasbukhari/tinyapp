@@ -2,66 +2,124 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const app = express();
 const PORT = 8080;
-const { generateRandomString, getUserByEmail } = require("./helpers");
-const users = {}; // This will store our user data
 
-app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
-// GET /login route (renders login page)
-app.get("/login", (req, res) => {
-  res.render("login");
-});
+// In-memory databases
+const urlDatabase = {};
+const users = {};
 
-// POST /login route (handles login)
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
+// Function to generate random string
+const generateRandomString = () => {
+  return Math.random().toString(36).slice(2, 8);
+};
 
-  // Find user by email
-  const user = getUserByEmail(email);
-
-  // If user doesn't exist or password doesn't match, send 403
-  if (!user || user.password !== password) {
-    return res.status(403).send("Email or password incorrect");
-  }
-
-  // Set user_id cookie and redirect to /urls
-  res.cookie("user_id", user.id);
-  return res.redirect("/urls");
-});
-
-// GET /urls (renders URLs page)
-app.get("/urls", (req, res) => {
-  const userId = req.cookies["user_id"];
-  const user = users[userId];
-
-  if (!user) {
-    return res.redirect("/login");
-  }
-
-  const templateVars = {
-    user,
-    urls: {}, // Your URL database object goes here
-  };
-  res.render("urls_index", templateVars);
-});
-
-// POST /logout route (handles logout)
-app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");  // Clear the user_id cookie
-  res.redirect("/login");  // Redirect user to login page
-});
-
-// Helper function to get user by email
-function getUserByEmail(email) {
-  for (const userId in users) {
+// Check if user exists by email
+const getUserByEmail = (email) => {
+  for (let userId in users) {
     if (users[userId].email === email) {
       return users[userId];
     }
   }
   return null;
-}
+};
+
+// Redirect to /urls if logged in
+app.get("/login", (req, res) => {
+  if (req.cookies["user_id"]) {
+    return res.redirect("/urls");
+  }
+  res.render("login");
+});
+
+app.get("/register", (req, res) => {
+  if (req.cookies["user_id"]) {
+    return res.redirect("/urls");
+  }
+  res.render("register");
+});
+
+// Registration POST
+app.post("/register", (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).send("Email and Password cannot be empty");
+  }
+  if (getUserByEmail(email)) {
+    return res.status(400).send("Email already exists");
+  }
+
+  const userId = generateRandomString();
+  users[userId] = { id: userId, email, password };
+  res.cookie("user_id", userId);
+  res.redirect("/urls");
+});
+
+// Login POST
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+  const user = getUserByEmail(email);
+
+  if (!user || user.password !== password) {
+    return res.status(403).send("Invalid email or password");
+  }
+
+  res.cookie("user_id", user.id);
+  res.redirect("/urls");
+});
+
+// Logout POST
+app.post("/logout", (req, res) => {
+  res.clearCookie("user_id");
+  res.redirect("/login");
+});
+
+// Protect creating new URLs
+app.get("/urls/new", (req, res) => {
+  if (!req.cookies["user_id"]) {
+    return res.redirect("/login");
+  }
+  res.render("urls_new");
+});
+
+// Create URL POST
+app.post("/urls", (req, res) => {
+  if (!req.cookies["user_id"]) {
+    return res.status(400).send("You must be logged in to create a new URL.");
+  }
+
+  const longURL = req.body.longURL;
+  const shortURL = generateRandomString();
+  urlDatabase[shortURL] = longURL;
+
+  res.redirect(`/urls/${shortURL}`);
+});
+
+// View short URL
+app.get("/urls/:id", (req, res) => {
+  const shortURL = req.params.id;
+  const longURL = urlDatabase[shortURL];
+  
+  if (!longURL) {
+    return res.status(404).send("Error: This short URL does not exist.");
+  }
+
+  res.render("urls_show", { shortURL, longURL });
+});
+
+// Redirect to long URL
+app.get("/u/:id", (req, res) => {
+  const shortURL = req.params.id;
+  const longURL = urlDatabase[shortURL];
+
+  if (!longURL) {
+    return res.status(404).send("Error: This short URL does not exist.");
+  }
+
+  res.redirect(longURL);
+});
 
 app.listen(PORT, () => {
-  console.log(`TinyApp is listening on port ${PORT}`);
+  console.log(`TinyApp listening on port ${PORT}!`);
 });
