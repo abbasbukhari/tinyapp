@@ -1,21 +1,29 @@
 const express = require("express");
+const cookieSession = require("cookie-session"); // Require cookie-session
 const app = express();
-const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
-app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
+
 app.set("view engine", "ejs");
+app.use(express.urlencoded({ extended: true }));
 
-let users = {}; // This will store the user data
+// Use cookie-session middleware for secure, encrypted cookies
+app.use(cookieSession({
+  name: 'session',
+  secret: 'your-secret-key', // A random secret string used to encrypt cookies
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours (optional, can be adjusted)
+}));
 
-// Helper function to generate random strings for IDs
+// Mock database for storing users and URLs
+let users = {};
+let urlDatabase = {};
+
+// Helper functions to handle user registration and login logic
 function generateRandomString() {
   return Math.random().toString(36).substring(2, 8);
 }
 
-// Helper function to get user by email
 function getUserByEmail(email) {
-  for (const userId in users) {
+  for (let userId in users) {
     if (users[userId].email === email) {
       return users[userId];
     }
@@ -23,12 +31,12 @@ function getUserByEmail(email) {
   return null;
 }
 
-// Route to display registration form
+// Registration Route (GET)
 app.get("/register", (req, res) => {
   res.render("register");
 });
 
-// Route to handle registration form submission
+// Registration Route (POST)
 app.post("/register", (req, res) => {
   const { email, password } = req.body;
 
@@ -40,57 +48,50 @@ app.post("/register", (req, res) => {
     return res.status(400).send("Email already exists");
   }
 
-  // Hash the password using bcryptjs
   const hashedPassword = bcrypt.hashSync(password, 10);
-
   const userId = generateRandomString();
-  users[userId] = {
-    id: userId,
-    email: email,
-    password: hashedPassword,
-  };
+  users[userId] = { id: userId, email: email, password: hashedPassword };
 
-  res.cookie("user_id", userId); // Set cookie with user ID
+  req.session.user_id = userId; // Store user_id in the encrypted cookie
   return res.redirect("/urls");
 });
 
-// Route to display login form
+// Login Route (GET)
 app.get("/login", (req, res) => {
   res.render("login");
 });
 
-// Route to handle login form submission
+// Login Route (POST)
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
-
-  const user = getUserByEmail(email); // Find user by email
+  const user = getUserByEmail(email);
 
   if (!user) {
     return res.status(403).send("Email not found");
   }
 
-  // Compare the entered password with the hashed password
   const passwordMatch = bcrypt.compareSync(password, user.password);
 
   if (!passwordMatch) {
     return res.status(403).send("Incorrect password");
   }
 
-  res.cookie("user_id", user.id); // Set cookie with user ID
+  req.session.user_id = user.id; // Store user_id in the encrypted cookie
   return res.redirect("/urls");
 });
 
-// Route to log out and clear user session
+// Logout Route (POST)
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id"); // Clear the user_id cookie
-  return res.redirect("/login"); // Redirect to login page
+  req.session = null; // Clear the session data
+  return res.redirect("/login"); // Redirect to login page after logout
 });
 
-// Route to display user's URLs
+// URLs Route (GET)
 app.get("/urls", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
+
   if (!userId) {
-    return res.status(400).send("You must be logged in to see your URLs");
+    return res.status(400).send("You must be logged in to view your URLs");
   }
 
   const userUrls = Object.keys(urlDatabase).filter(
@@ -104,88 +105,23 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-// Your existing URL database (now with user association)
-let urlDatabase = {
-  b6UTxQ: {
-    longURL: "https://www.tsn.ca",
-    userID: "aJ48lW",
-  },
-  i3BoGr: {
-    longURL: "https://www.google.ca",
-    userID: "aJ48lW",
-  },
-};
-
-// Route to create a new URL (only accessible by logged-in users)
+// Create New URL (GET)
 app.get("/urls/new", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
+
   if (!userId) {
-    return res.redirect("/login");
+    return res.redirect("/login"); // Redirect to login page if user is not logged in
   }
+
   res.render("urls_new");
 });
 
-// Route to handle POST requests to create new URL
+// Create New URL (POST)
 app.post("/urls", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
+
   if (!userId) {
     return res.status(400).send("You must be logged in to shorten URLs");
   }
 
-  const shortURL = generateRandomString();
-  const longURL = req.body.longURL;
-
-  urlDatabase[shortURL] = {
-    longURL: longURL,
-    userID: userId,
-  };
-
-  res.redirect("/urls");
-});
-
-// Route to show individual URL details
-app.get("/urls/:id", (req, res) => {
-  const userId = req.cookies["user_id"];
-  const shortURL = req.params.id;
-
-  if (!userId) {
-    return res.status(400).send("You must be logged in to view URLs");
-  }
-
-  const url = urlDatabase[shortURL];
-
-  if (!url || url.userID !== userId) {
-    return res.status(403).send("You are not authorized to view this URL");
-  }
-
-  const templateVars = { user: users[userId], shortURL, longURL: url.longURL };
-  res.render("urls_show", templateVars);
-});
-
-// Route to delete a URL
-app.post("/urls/:id/delete", (req, res) => {
-  const userId = req.cookies["user_id"];
-  const shortURL = req.params.id;
-
-  if (!userId) {
-    return res.status(400).send("You must be logged in to delete URLs");
-  }
-
-  const url = urlDatabase[shortURL];
-
-  if (!url) {
-    return res.status(400).send("URL not found");
-  }
-
-  if (url.userID !== userId) {
-    return res.status(403).send("You cannot delete this URL");
-  }
-
-  delete urlDatabase[shortURL];
-  res.redirect("/urls");
-});
-
-// The server is running
-app.listen(8080, () => {
-  console.log("TinyApp listening on port 8080!");
-});
+ 
