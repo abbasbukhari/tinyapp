@@ -1,8 +1,7 @@
 const express = require("express");
 const app = express();
 const cookieParser = require("cookie-parser");
-const bcrypt = require("bcrypt");
-const saltRounds = 10;
+const bcrypt = require("bcryptjs");
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
@@ -41,21 +40,18 @@ app.post("/register", (req, res) => {
     return res.status(400).send("Email already exists");
   }
 
-  bcrypt.hash(password, saltRounds, (err, hash) => {
-    if (err) {
-      return res.status(500).send("Error hashing password");
-    }
+  // Hash the password using bcryptjs
+  const hashedPassword = bcrypt.hashSync(password, 10);
 
-    const userId = generateRandomString();
-    users[userId] = {
-      id: userId,
-      email: email,
-      password: hash,
-    };
+  const userId = generateRandomString();
+  users[userId] = {
+    id: userId,
+    email: email,
+    password: hashedPassword,
+  };
 
-    res.cookie("user_id", userId); // Set cookie with user ID
-    return res.redirect("/urls");
-  });
+  res.cookie("user_id", userId); // Set cookie with user ID
+  return res.redirect("/urls");
 });
 
 // Route to display login form
@@ -73,18 +69,15 @@ app.post("/login", (req, res) => {
     return res.status(403).send("Email not found");
   }
 
-  bcrypt.compare(password, user.password, (err, result) => {
-    if (err) {
-      return res.status(500).send("Error comparing passwords");
-    }
+  // Compare the entered password with the hashed password
+  const passwordMatch = bcrypt.compareSync(password, user.password);
 
-    if (!result) {
-      return res.status(403).send("Incorrect password");
-    }
+  if (!passwordMatch) {
+    return res.status(403).send("Incorrect password");
+  }
 
-    res.cookie("user_id", user.id); // Set cookie with user ID
-    return res.redirect("/urls");
-  });
+  res.cookie("user_id", user.id); // Set cookie with user ID
+  return res.redirect("/urls");
 });
 
 // Route to log out and clear user session
