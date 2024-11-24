@@ -1,23 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" />
-    <title>URL - TinyApp Example</title>
-  </head>
-  <body>
-    <%- include('partials/_header') %>
-    <div class="card text-center">
-      <div class="card-header"></div>
-      <div class="card-body">
-        <h5 class="card-title">TinyURL for: <%= longURL %></h5>
-        <p class="card-text">
-          Short URL ID: <a href="/urls/<%= id %>"><%= id %></a>
-        </p>
-      </div>
-      <div class="card-footer text-muted"></div>
-    </div>
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-  </body>
-</html>
+<%- include('partials/_header', { user: user }) %>
+
+<main style="margin: 1em;">
+  <h2>URL Details</h2>
+  <% if (!url) { %>
+    <p>URL not found.</p>
+  <% } else { %>
+    <p>Short URL: <%= url.shortURL %></p>
+    <p>Long URL: <%= url.longURL %></p>
+    <form action="/urls/<%= url.shortURL %>" method="POST">
+      <label for="longURL">Edit Long URL:</label>
+      <input type="text" name="longURL" value="<%= url.longURL %>" />
+      <button type="submit">Save</button>
+    </form>
+  <% } %>
+</main>

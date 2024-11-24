@@ -1,32 +1,33 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
-    />
-    <title>TinyApp</title>
-  </head>
-  <body>
-    <%- include('partials/_header', { user: user }) %>
-    
-    <h1>My URLs</h1>
+<%- include('partials/_header', { user: user }) %>
+
+<main style="margin: 1em;">
+  <h2>My URLs</h2>
+  <% if (Object.keys(urls).length === 0) { %>
+    <p>You have no URLs. Please log in or register to create one.</p>
+  <% } else { %>
     <table>
       <thead>
         <tr>
-          <th>Short URL ID</th>
+          <th>Short URL</th>
           <th>Long URL</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         <% for (let shortURL in urls) { %>
           <tr>
-            <td><%= shortURL %></td>
-            <td><%= urls[shortURL] %></td>
+            <td><a href="/urls/<%= shortURL %>"><%= shortURL %></a></td>
+            <td><%= urls[shortURL].longURL %></td>
+            <td>
+              <a href="/urls/<%= shortURL %>/edit">Edit</a> |
+              <form action="/urls/<%= shortURL %>/delete" method="POST" style="display:inline;">
+                <button type="submit">Delete</button>
+              </form>
+            </td>
           </tr>
         <% } %>
       </tbody>
     </table>
-  </body>
-</html>
+  <% } %>
+  <a href="/urls/new">Create New URL</a>
+</main>
