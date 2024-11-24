@@ -124,4 +124,56 @@ app.post("/urls", (req, res) => {
     return res.status(400).send("You must be logged in to shorten URLs");
   }
 
- 
+  const shortURL = generateRandomString();
+  const longURL = req.body.longURL;
+
+  urlDatabase[shortURL] = {
+    longURL: longURL,
+    userID: userId,
+  };
+
+  res.redirect("/urls");
+});
+
+// View URL (GET)
+app.get("/urls/:id", (req, res) => {
+  const userId = req.session.user_id;
+  const shortURL = req.params.id;
+
+  if (!userId) {
+    return res.status(400).send("You must be logged in to view URLs");
+  }
+
+  const url = urlDatabase[shortURL];
+
+  if (!url || url.userID !== userId) {
+    return res.status(403).send("You are not authorized to view this URL");
+  }
+
+  const templateVars = { user: users[userId], shortURL, longURL: url.longURL };
+  res.render("urls_show", templateVars);
+});
+
+// Delete URL (POST)
+app.post("/urls/:id/delete", (req, res) => {
+  const userId = req.session.user_id;
+  const shortURL = req.params.id;
+
+  if (!userId) {
+    return res.status(400).send("You must be logged in to delete URLs");
+  }
+
+  const url = urlDatabase[shortURL];
+
+  if (!url || url.userID !== userId) {
+    return res.status(403).send("You cannot delete this URL");
+  }
+
+  delete urlDatabase[shortURL];
+  res.redirect("/urls");
+});
+
+// The server is running
+app.listen(8080, () => {
+  console.log("TinyApp listening on port 8080!");
+});
