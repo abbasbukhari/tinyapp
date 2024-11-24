@@ -1,205 +1,198 @@
 const express = require("express");
-const cookieParser = require("cookie-parser");
 const app = express();
-const PORT = 8080;
-
-// Database for URLs and Users
-const urlDatabase = {};
-const users = {};
-
-// Middleware
+const cookieParser = require("cookie-parser");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 app.use(cookieParser());
-app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
+app.set("view engine", "ejs");
 
-// Helper function to generate random string (for URL and User IDs)
+let users = {}; // This will store the user data
+
+// Helper function to generate random strings for IDs
 function generateRandomString() {
-  return Math.random().toString(36).slice(2, 8);
+  return Math.random().toString(36).substring(2, 8);
 }
 
-// Helper function to find user by email
+// Helper function to get user by email
 function getUserByEmail(email) {
-  for (let userID in users) {
-    if (users[userID].email === email) {
-      return users[userID];
+  for (const userId in users) {
+    if (users[userId].email === email) {
+      return users[userId];
     }
   }
   return null;
 }
 
-// Helper function to filter URLs by user ID
-function urlsForUser(id) {
-  const userUrls = {};
-  for (let url in urlDatabase) {
-    if (urlDatabase[url].userID === id) {
-      userUrls[url] = urlDatabase[url];
-    }
-  }
-  return userUrls;
-}
-
-// Routes
-
-// Landing page - redirects if logged in
-app.get("/", (req, res) => {
-  if (req.cookies["user_id"]) {
-    return res.redirect("/urls");
-  }
-  res.redirect("/login");
-});
-
-// Register page (only accessible when logged out)
+// Route to display registration form
 app.get("/register", (req, res) => {
-  if (req.cookies["user_id"]) {
-    return res.redirect("/urls");
-  }
   res.render("register");
 });
 
-// Register POST route
+// Route to handle registration form submission
 app.post("/register", (req, res) => {
   const { email, password } = req.body;
 
-  // Check if email or password is empty
   if (!email || !password) {
-    return res.status(400).send("Email and password cannot be empty.");
+    return res.status(400).send("Email and password cannot be empty");
   }
 
-  // Check if email already exists
   if (getUserByEmail(email)) {
-    return res.status(400).send("Email already registered.");
+    return res.status(400).send("Email already exists");
   }
 
-  const userID = generateRandomString();
-  users[userID] = { id: userID, email, password };
+  bcrypt.hash(password, saltRounds, (err, hash) => {
+    if (err) {
+      return res.status(500).send("Error hashing password");
+    }
 
-  // Set user_id cookie and redirect
-  res.cookie("user_id", userID);
-  res.redirect("/urls");
+    const userId = generateRandomString();
+    users[userId] = {
+      id: userId,
+      email: email,
+      password: hash,
+    };
+
+    res.cookie("user_id", userId); // Set cookie with user ID
+    return res.redirect("/urls");
+  });
 });
 
-// Login page (only accessible when logged out)
+// Route to display login form
 app.get("/login", (req, res) => {
-  if (req.cookies["user_id"]) {
-    return res.redirect("/urls");
-  }
   res.render("login");
 });
 
-// Login POST route
+// Route to handle login form submission
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
-  const user = getUserByEmail(email);
 
-  if (!user || user.password !== password) {
-    return res.status(403).send("Invalid credentials.");
+  const user = getUserByEmail(email); // Find user by email
+
+  if (!user) {
+    return res.status(403).send("Email not found");
   }
 
-  res.cookie("user_id", user.id);
-  res.redirect("/urls");
+  bcrypt.compare(password, user.password, (err, result) => {
+    if (err) {
+      return res.status(500).send("Error comparing passwords");
+    }
+
+    if (!result) {
+      return res.status(403).send("Incorrect password");
+    }
+
+    res.cookie("user_id", user.id); // Set cookie with user ID
+    return res.redirect("/urls");
+  });
 });
 
-// Logout route
+// Route to log out and clear user session
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
-  res.redirect("/login");
+  res.clearCookie("user_id"); // Clear the user_id cookie
+  return res.redirect("/login"); // Redirect to login page
 });
 
-// URLs page (only accessible when logged in)
+// Route to display user's URLs
 app.get("/urls", (req, res) => {
-  if (!req.cookies["user_id"]) {
-    return res.status(401).send("Please log in to view your URLs.");
+  const userId = req.cookies["user_id"];
+  if (!userId) {
+    return res.status(400).send("You must be logged in to see your URLs");
   }
 
-  const userUrls = urlsForUser(req.cookies["user_id"]);
-  res.render("urls_index", { urls: userUrls, user: users[req.cookies["user_id"]] });
+  const userUrls = Object.keys(urlDatabase).filter(
+    (key) => urlDatabase[key].userID === userId
+  ).map((key) => ({
+    id: key,
+    longURL: urlDatabase[key].longURL,
+  }));
+
+  const templateVars = { user: users[userId], urls: userUrls };
+  res.render("urls_index", templateVars);
 });
 
-// New URL page (only accessible when logged in)
+// Your existing URL database (now with user association)
+let urlDatabase = {
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+  },
+};
+
+// Route to create a new URL (only accessible by logged-in users)
 app.get("/urls/new", (req, res) => {
-  if (!req.cookies["user_id"]) {
+  const userId = req.cookies["user_id"];
+  if (!userId) {
     return res.redirect("/login");
   }
   res.render("urls_new");
 });
 
-// POST route to create a new URL
+// Route to handle POST requests to create new URL
 app.post("/urls", (req, res) => {
-  if (!req.cookies["user_id"]) {
-    return res.status(401).send("Please log in to create a URL.");
+  const userId = req.cookies["user_id"];
+  if (!userId) {
+    return res.status(400).send("You must be logged in to shorten URLs");
   }
 
   const shortURL = generateRandomString();
-  urlDatabase[shortURL] = { longURL: req.body.longURL, userID: req.cookies["user_id"] };
+  const longURL = req.body.longURL;
 
-  res.redirect(`/urls/${shortURL}`);
-});
+  urlDatabase[shortURL] = {
+    longURL: longURL,
+    userID: userId,
+  };
 
-// Show individual URL page (only accessible by the URL owner)
-app.get("/urls/:id", (req, res) => {
-  if (!req.cookies["user_id"]) {
-    return res.status(401).send("Please log in to view this URL.");
-  }
-
-  const url = urlDatabase[req.params.id];
-  if (!url) {
-    return res.status(404).send("URL not found.");
-  }
-
-  if (url.userID !== req.cookies["user_id"]) {
-    return res.status(403).send("You do not own this URL.");
-  }
-
-  res.render("urls_show", { url, user: users[req.cookies["user_id"]] });
-});
-
-// Delete URL (only accessible by the URL owner)
-app.post("/urls/:id/delete", (req, res) => {
-  if (!req.cookies["user_id"]) {
-    return res.status(401).send("Please log in to delete this URL.");
-  }
-
-  const url = urlDatabase[req.params.id];
-  if (!url) {
-    return res.status(404).send("URL not found.");
-  }
-
-  if (url.userID !== req.cookies["user_id"]) {
-    return res.status(403).send("You do not own this URL.");
-  }
-
-  delete urlDatabase[req.params.id];
   res.redirect("/urls");
 });
 
-// Edit URL (only accessible by the URL owner)
-app.post("/urls/:id", (req, res) => {
-  if (!req.cookies["user_id"]) {
-    return res.status(401).send("Please log in to edit this URL.");
+// Route to show individual URL details
+app.get("/urls/:id", (req, res) => {
+  const userId = req.cookies["user_id"];
+  const shortURL = req.params.id;
+
+  if (!userId) {
+    return res.status(400).send("You must be logged in to view URLs");
   }
 
-  const url = urlDatabase[req.params.id];
-  if (!url) {
-    return res.status(404).send("URL not found.");
+  const url = urlDatabase[shortURL];
+
+  if (!url || url.userID !== userId) {
+    return res.status(403).send("You are not authorized to view this URL");
   }
 
-  if (url.userID !== req.cookies["user_id"]) {
-    return res.status(403).send("You do not own this URL.");
-  }
-
-  url.longURL = req.body.longURL;
-  res.redirect(`/urls/${req.params.id}`);
+  const templateVars = { user: users[userId], shortURL, longURL: url.longURL };
+  res.render("urls_show", templateVars);
 });
 
-// Redirect to long URL
-app.get("/u/:id", (req, res) => {
-  const url = urlDatabase[req.params.id];
-  if (!url) {
-    return res.status(404).send("URL not found.");
+// Route to delete a URL
+app.post("/urls/:id/delete", (req, res) => {
+  const userId = req.cookies["user_id"];
+  const shortURL = req.params.id;
+
+  if (!userId) {
+    return res.status(400).send("You must be logged in to delete URLs");
   }
-  res.redirect(url.longURL);
+
+  const url = urlDatabase[shortURL];
+
+  if (!url) {
+    return res.status(400).send("URL not found");
+  }
+
+  if (url.userID !== userId) {
+    return res.status(403).send("You cannot delete this URL");
+  }
+
+  delete urlDatabase[shortURL];
+  res.redirect("/urls");
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+// The server is running
+app.listen(8080, () => {
+  console.log("TinyApp listening on port 8080!");
 });
