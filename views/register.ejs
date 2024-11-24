@@ -2,32 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Register - TinyApp</title>
-    <!-- Add Bootstrap CSS here if needed -->
   </head>
-
   <body>
-    <%- include('partials/_header') %>
-
-    <main style="margin: 1em;">
-      <h3>Register</h3>
-      <form action="/register" method="POST">
-        <div>
-          <label for="email">Email:</label>
-          <input type="email" name="email" required />
-        </div>
-        <div>
-          <label for="password">Password:</label>
-          <input type="password" name="password" required />
-        </div>
-        <button type="submit">Register</button>
-      </form>
-    </main>
-
-    <!-- Add Bootstrap JS here if needed -->
+    <h1>Create an Account</h1>
+    <form method="POST" action="/register">
+      <div>
+        <label for="email">Email: </label>
+        <input type="email" name="email" required />
+      </div>
+      <div>
+        <label for="password">Password: </label>
+        <input type="password" name="password" required />
+      </div>
+      <button type="submit">Register</button>
+    </form>
   </body>
 </html>

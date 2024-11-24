@@ -1,15 +1,29 @@
 <header>
-  <nav>
-    <ul>
-      <% if (user) { %> <!-- If the user is logged in, show logout -->
-        <li>Logged in as: <%= user.email %></li>
-        <form action="/logout" method="POST">
-          <button type="submit">Logout</button>
-        </form>
-      <% } else { %> <!-- If the user is not logged in, show login and register links -->
-        <li><a href="/register">Register</a></li>
-        <li><a href="/login">Login</a></li>
-      <% } %>
-    </ul>
+  <nav class="navbar navbar-expand-md navbar-dark bg-success">
+    <a class="navbar-brand" href="/urls">TinyApp</a>
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-toggle="collapse"
+      data-target="#navbarNavAltMarkup"
+      aria-controls="navbarNavAltMarkup"
+      aria-expanded="false"
+      aria-label="Toggle navigation"
+    >
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+      <div class="navbar-nav">
+        <% if (user) { %> <!-- Check if the user is logged in -->
+          <span class="navbar-text">Logged in as: <%= user.email %></span>
+          <form action="/logout" method="POST" class="form-inline ml-2">
+            <button class="btn btn-outline-light">Log out</button>
+          </form>
+        <% } else { %> <!-- If no user, show links for login and registration -->
+          <a class="nav-item nav-link" href="/login">Login</a>
+          <a class="nav-item nav-link" href="/register">Register</a>
+        <% } %>
+      </div>
+    </div>
   </nav>
 </header>

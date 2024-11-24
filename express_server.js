@@ -1,98 +1,67 @@
-// Require necessary libraries
-const express = require('express');
-const cookieParser = require('cookie-parser');
+const express = require("express");
+const cookieParser = require("cookie-parser");
 const app = express();
 const PORT = 8080;
+const { generateRandomString, getUserByEmail } = require("./helpers");
+const users = {}; // This will store our user data
 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Users database (simulated)
-const users = {};
-
-// Helper function to get user by email
-const getUserByEmail = (email) => {
-  for (let userId in users) {
-    if (users[userId].email === email) {
-      return users[userId];
-    }
-  }
-  return null;
-};
-
-// Helper function to generate random string for user id
-const generateRandomString = () => {
-  return Math.random().toString(36).substring(2, 8);
-};
-
-// GET /login - Render login page
+// GET /login route (renders login page)
 app.get("/login", (req, res) => {
-  res.render("login"); // Render login.ejs template
+  res.render("login");
 });
 
-// POST /login - Handle user login
+// POST /login route (handles login)
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  // Search for a user by email
+  // Find user by email
   const user = getUserByEmail(email);
 
-  if (user && user.password === password) {
-    // Set the user_id cookie if the user is found and the password matches
-    res.cookie("user_id", user.id);
-    return res.redirect("/urls");
+  // If user doesn't exist or password doesn't match, send 403
+  if (!user || user.password !== password) {
+    return res.status(403).send("Email or password incorrect");
   }
 
-  // If no user is found or the password doesn't match
-  res.status(403).send("Invalid email or password");
+  // Set user_id cookie and redirect to /urls
+  res.cookie("user_id", user.id);
+  return res.redirect("/urls");
 });
 
-// POST /logout - Clear cookie and logout user
-app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
-  res.redirect("/urls");
-});
-
-// GET /register - Render registration page
-app.get("/register", (req, res) => {
-  res.render("register"); // Render register.ejs template
-});
-
-// POST /register - Handle user registration
-app.post("/register", (req, res) => {
-  const { email, password } = req.body;
-
-  // Check if email or password is empty
-  if (!email || !password) {
-    return res.status(400).send("Email and password cannot be empty");
-  }
-
-  // Check if email already exists
-  if (getUserByEmail(email)) {
-    return res.status(400).send("Email already in use");
-  }
-
-  const userId = generateRandomString(); // Generate a new random user ID
-  users[userId] = { id: userId, email: email, password: password };
-
-  res.cookie("user_id", userId); // Set cookie with user_id
-  res.redirect("/urls"); // Redirect to /urls page
-});
-
-// GET /urls - Show user URLs page
+// GET /urls (renders URLs page)
 app.get("/urls", (req, res) => {
   const userId = req.cookies["user_id"];
   const user = users[userId];
 
   if (!user) {
-    return res.redirect("/login"); // Redirect to login if no user is found
+    return res.redirect("/login");
   }
 
-  const templateVars = { user: user }; // Pass the entire user object to template
+  const templateVars = {
+    user,
+    urls: {}, // Your URL database object goes here
+  };
   res.render("urls_index", templateVars);
 });
 
-// Start the server
+// POST /logout route (handles logout)
+app.post("/logout", (req, res) => {
+  res.clearCookie("user_id");  // Clear the user_id cookie
+  res.redirect("/login");  // Redirect user to login page
+});
+
+// Helper function to get user by email
+function getUserByEmail(email) {
+  for (const userId in users) {
+    if (users[userId].email === email) {
+      return users[userId];
+    }
+  }
+  return null;
+}
+
 app.listen(PORT, () => {
-  console.log(`TinyApp listening on port ${PORT}!`);
+  console.log(`TinyApp is listening on port ${PORT}`);
 });
