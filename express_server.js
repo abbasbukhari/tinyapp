@@ -1,80 +1,198 @@
-// express_server.js
-
 const express = require("express");
 const cookieSession = require("cookie-session");
-const { getUserByEmail } = require('./helpers');
 const bcrypt = require("bcryptjs");
+const { getUserByEmail } = require("./helpers"); // Import helper functions
+
 const app = express();
 const PORT = 8080;
 
-// Middleware to parse POST body
+// Middleware to parse POST requests and set up session cookies
 app.use(express.urlencoded({ extended: true }));
-
-// Use cookie-session for handling encrypted cookies
 app.use(cookieSession({
-  name: 'session',
-  keys: ['your-secret-key'],  // Set your secret key here
+  name: "session",
+  keys: ["your-secret-key"], // Replace with your secret key
 }));
 
-// Users database
+// Set EJS as the view engine
+app.set("view engine", "ejs");
+
+// In-memory databases
+const urlDatabase = {
+  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "userRandomID" },
+  i3BoGr: { longURL: "https://www.google.ca", userID: "user2RandomID" },
+};
+
 const users = {
-  "userRandomID": {
-    id: "userRandomID", 
-    email: "user@example.com", 
-    password: bcrypt.hashSync("purple-monkey-dinosaur", 10)
+  userRandomID: {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: bcrypt.hashSync("purple-monkey-dinosaur", 10),
   },
-  "user2RandomID": {
-    id: "user2RandomID", 
-    email: "user2@example.com", 
-    password: bcrypt.hashSync("dishwasher-funk", 10)
-  }
+  user2RandomID: {
+    id: "user2RandomID",
+    email: "user2@example.com",
+    password: bcrypt.hashSync("dishwasher-funk", 10),
+  },
 };
 
-// Helper function to get user by email
-const getUserByEmail = (email, database) => {
-  for (let userId in database) {
-    if (database[userId].email === email) {
-      return database[userId];
-    }
-  }
-  return null;
-};
+// Routes
 
-// GET Routes
-
-app.get("/urls", (req, res) => {
-  if (!req.session.user_id) {
-    return res.status(400).send("Please log in to view URLs.");
+// Home route: Redirect based on login status
+app.get("/", (req, res) => {
+  if (req.session.user_id) {
+    return res.redirect("/urls");
   }
-  const user = users[req.session.user_id];
-  res.json(user);  // Return logged in user's URLs
+  return res.redirect("/login");
 });
 
+// Route to display URLs specific to a logged-in user
+app.get("/urls", (req, res) => {
+  const userID = req.session.user_id;
+  if (!userID) {
+    return res.status(401).send("Please log in to view URLs.");
+  }
+
+  // Filter URLs for the logged-in user
+  const userURLs = {};
+  for (const id in urlDatabase) {
+    if (urlDatabase[id].userID === userID) {
+      userURLs[id] = urlDatabase[id];
+    }
+  }
+
+  const templateVars = { urls: userURLs, user: users[userID] };
+  res.render("urls_index", templateVars);
+});
+
+// Route to display the form for creating a new URL
 app.get("/urls/new", (req, res) => {
   if (!req.session.user_id) {
     return res.redirect("/login");
   }
-  res.render("urls_new");
+  const templateVars = { user: users[req.session.user_id] }; // Pass only the user data
+  res.render("urls_new", templateVars);
 });
 
+// Route to handle URL creation
+app.post("/urls", (req, res) => {
+  if (!req.session.user_id) {
+    return res.status(401).send("Unauthorized: Please log in to create a URL.");
+  }
+
+  const shortURL = generateRandomString();
+  urlDatabase[shortURL] = {
+    longURL: req.body.longURL,
+    userID: req.session.user_id,
+  };
+  res.redirect(`/urls/${shortURL}`);
+});
+
+// Route to handle editing and rendering the edit page
+app.get("/urls/:id", (req, res) => {
+  const { id } = req.params;
+  const userID = req.session.user_id;
+  const urlData = urlDatabase[id];
+
+  if (!urlData) {
+    return res.status(404).send("URL not found.");
+  }
+  if (urlData.userID !== userID) {
+    return res.status(403).send("Access denied: This URL does not belong to you.");
+  }
+
+  const templateVars = {
+    user: users[userID],
+    url: { shortURL: id, longURL: urlData.longURL }, // Pass the URL object to the template
+  };
+  res.render("urls_edit", templateVars); // Render the editing page
+});
+
+// Route to handle URL updates
+app.post("/urls/:id", (req, res) => {
+  const { id } = req.params;
+  const userID = req.session.user_id;
+
+  if (!urlDatabase[id]) {
+    return res.status(404).send("URL not found.");
+  }
+  if (urlDatabase[id].userID !== userID) {
+    return res.status(403).send("Access denied: You cannot edit this URL.");
+  }
+
+  // Update long URL
+  urlDatabase[id].longURL = req.body.longURL;
+  res.redirect("/urls");
+});
+
+// Route to handle URL deletion
+app.post("/urls/:id/delete", (req, res) => {
+  const { id } = req.params;
+  const userID = req.session.user_id;
+
+  if (!urlDatabase[id]) {
+    return res.status(404).send("URL not found.");
+  }
+  if (urlDatabase[id].userID !== userID) {
+    return res.status(403).send("Access denied: You cannot delete this URL.");
+  }
+
+  delete urlDatabase[id];
+  res.redirect("/urls");
+});
+
+// Route to redirect to the long URL from a short URL
+app.get("/u/:id", (req, res) => {
+  const { id } = req.params;
+  const urlData = urlDatabase[id];
+
+  if (!urlData) {
+    return res.status(404).send("Short URL not found.");
+  }
+
+  res.redirect(urlData.longURL);
+});
+
+// Login route
 app.get("/login", (req, res) => {
   if (req.session.user_id) {
     return res.redirect("/urls");
   }
-  res.render("login");
+  const templateVars = { user: null };
+  res.render("login", templateVars);
 });
 
+// Handle login form submission
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+  const user = getUserByEmail(email, users);
+
+  if (!user || !bcrypt.compareSync(password, user.password)) {
+    return res.status(403).send("Invalid credentials.");
+  }
+
+  req.session.user_id = user.id;
+  res.redirect("/urls");
+});
+
+// Handle logout
+app.post("/logout", (req, res) => {
+  req.session = null;
+  res.redirect("/login");
+});
+
+// Registration page
 app.get("/register", (req, res) => {
   if (req.session.user_id) {
     return res.redirect("/urls");
   }
-  res.render("register");
+  const templateVars = { user: null };
+  res.render("register", templateVars);
 });
 
-// POST Routes
-
+// Handle new user registration
 app.post("/register", (req, res) => {
   const { email, password } = req.body;
+
   if (!email || !password) {
     return res.status(400).send("Email and password cannot be empty.");
   }
@@ -82,60 +200,20 @@ app.post("/register", (req, res) => {
     return res.status(400).send("Email already registered.");
   }
 
-  const userId = "user" + Math.random().toString(36).substring(2, 8); // Random user ID
+  const id = generateRandomString();
   const hashedPassword = bcrypt.hashSync(password, 10);
-  users[userId] = {
-    id: userId,
-    email,
-    password: hashedPassword
-  };
-  req.session.user_id = userId;
+
+  users[id] = { id, email, password: hashedPassword };
+  req.session.user_id = id;
   res.redirect("/urls");
 });
 
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
-  const user = getUserByEmail(email, users);
-  
-  if (!user) {
-    return res.status(403).send("User not found.");
-  }
+// Helper function to generate random string
+function generateRandomString() {
+  return Math.random().toString(36).substring(2, 8);
+}
 
-  if (!bcrypt.compareSync(password, user.password)) {
-    return res.status(403).send("Incorrect password.");
-  }
-
-  req.session.user_id = user.id;
-  res.redirect("/urls");
-});
-
-app.post("/logout", (req, res) => {
-  req.session = null; // Clear the session
-  res.redirect("/login");
-});
-
-// Delete User URL (Example) - Protected by User Session
-app.post("/urls/:id/delete", (req, res) => {
-  const user = users[req.session.user_id];
-  if (!user) {
-    return res.status(403).send("Please log in to delete URLs.");
-  }
-  const urlId = req.params.id;
-  const url = urlDatabase[urlId];
-
-  if (!url) {
-    return res.status(404).send("URL does not exist.");
-  }
-
-  if (url.userID !== user.id) {
-    return res.status(403).send("You can only delete your own URLs.");
-  }
-
-  delete urlDatabase[urlId];
-  res.redirect("/urls");
-});
-
-// Start server
+// Server listener
 app.listen(PORT, () => {
-  console.log(`TinyApp listening on port ${PORT}`);
+  console.log(`TinyApp listening on port ${PORT}!`);
 });
