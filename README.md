@@ -5,12 +5,6 @@ TinyApp is a full-stack web application built with Node.js and Express that allo
 
 ---
 
-## Final Product
-
-*(Include screenshots or descriptions of the final product here if available.)*
-
----
-
 ## Features
 
 - Users can register and log in.
@@ -64,14 +58,27 @@ TinyApp is a full-stack web application built with Node.js and Express that allo
 - **cookie-session**: For managing user sessions.
 - **ejs**: As the template engine for rendering dynamic HTML.
 - **express**: For handling routing and middleware.
+- **nodemon**: Development tool to restart the server automatically.
 
 ---
 
 ## Project Structure
 
+- **`/data`**: Contains urls.js for URL databases & users.js for user databases. 
 - **`/views`**: Contains EJS templates for rendering pages.
 - **`/helpers.js`**: Helper functions used throughout the app.
 - **`/express_server.js`**: The main server file handling routes and logic.
+
+---
+
+## Functional Changes
+
+- Updated /u/:id route to redirect short URLs to the corresponding long URLs.
+- Improved separation of concerns:
+- Moved urlDatabase and users objects into their respective files in the data directory.
+- Added a consistent Bootstrap-styled navigation bar across all views.
+- Fixed missing header on the /urls page.
+- Fixed the /urls/:id/edit route to render the correct edit page without errors.
 
 ---
 

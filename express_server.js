@@ -2,6 +2,8 @@ const express = require("express");
 const cookieSession = require("cookie-session");
 const bcrypt = require("bcryptjs");
 const { getUserByEmail } = require("./helpers"); // Import helper functions
+const urlDatabase = require("./data/urls"); // Import URLs data
+const users = require("./data/users"); // Import users data
 
 const app = express();
 const PORT = 8080;
@@ -15,25 +17,6 @@ app.use(cookieSession({
 
 // Set EJS as the view engine
 app.set("view engine", "ejs");
-
-// In-memory databases
-const urlDatabase = {
-  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "userRandomID" },
-  i3BoGr: { longURL: "https://www.google.ca", userID: "user2RandomID" },
-};
-
-const users = {
-  userRandomID: {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: bcrypt.hashSync("purple-monkey-dinosaur", 10),
-  },
-  user2RandomID: {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: bcrypt.hashSync("dishwasher-funk", 10),
-  },
-};
 
 // Routes
 
@@ -140,16 +123,16 @@ app.post("/urls/:id/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-// Route to redirect to the long URL from a short URL
+// Fixed Route for Redirecting Short URLs
 app.get("/u/:id", (req, res) => {
   const { id } = req.params;
-  const urlData = urlDatabase[id];
+  const url = urlDatabase[id];
 
-  if (!urlData) {
+  if (!url) {
     return res.status(404).send("Short URL not found.");
   }
 
-  res.redirect(urlData.longURL);
+  res.redirect(url.longURL);
 });
 
 // Login route
